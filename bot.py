@@ -1,6 +1,12 @@
 import os
 import logging
 import asyncio
+from dotenv import load_dotenv
+
+# Load environment variables FIRST
+load_dotenv()
+
+# Now import telegram
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -12,10 +18,6 @@ from telegram.ext import (
     ContextTypes
 )
 from telegram.constants import ParseMode
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -27,12 +29,15 @@ logger = logging.getLogger(__name__)
 # Conversation states
 NAME, DETAILS, AUDIENCE, STYLE, COLOR, IMAGE, DIMENSIONS, CONFIRM = range(8)
 
-# Bot token from environment
+# Get bot token
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 if not BOT_TOKEN:
+    logger.error("BOT_TOKEN not found in environment variables!")
     raise ValueError("BOT_TOKEN environment variable is required!")
 
-# Store user data temporarily
+logger.info(f"Bot token loaded: {BOT_TOKEN[:10]}...")
+
+# Store user data
 user_data = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -152,10 +157,10 @@ async def get_audience(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data[user_id]['audience'] = update.message.text.strip()
     
     keyboard = [
-        [InlineKeyboardButton("🎯 Modern", callback_data="style_modern")],
-        [InlineKeyboardButton("🎨 Artistic", callback_data="style_artistic")],
-        [InlineKeyboardButton("💼 Corporate", callback_data="style_corporate")],
-        [InlineKeyboardButton("🌟 Vibrant", callback_data="style_vibrant")]
+        [InlineKeyboardButton("🎯 Modern Minimalist", callback_data="style_modern")],
+        [InlineKeyboardButton("🎨 Creative Artistic", callback_data="style_artistic")],
+        [InlineKeyboardButton("💼 Professional Corporate", callback_data="style_corporate")],
+        [InlineKeyboardButton("🌟 Bold & Vibrant", callback_data="style_vibrant")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -176,10 +181,10 @@ async def get_style(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data[user_id]['style'] = style
     
     keyboard = [
-        [InlineKeyboardButton("🔵 Blue", callback_data="color_blue")],
-        [InlineKeyboardButton("🔴 Red", callback_data="color_red")],
-        [InlineKeyboardButton("🟢 Green", callback_data="color_green")],
-        [InlineKeyboardButton("🌙 Dark", callback_data="color_dark")]
+        [InlineKeyboardButton("🔵 Classic Blue", callback_data="color_blue")],
+        [InlineKeyboardButton("🔴 Passion Red", callback_data="color_red")],
+        [InlineKeyboardButton("🟢 Fresh Green", callback_data="color_green")],
+        [InlineKeyboardButton("🌙 Dark Night", callback_data="color_dark")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -312,10 +317,10 @@ async def generate_design(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN
     )
     
-    # Simulate generation (in real implementation, this would call an API)
+    # Simulate processing
     await asyncio.sleep(2)
     
-    # Generate a simple text response
+    # Generate campaign copy
     campaign_copy = f"""
 🎯 *Campaign: {data.get('name', 'Campaign')}*
 
@@ -399,6 +404,8 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     """Main function to run the bot"""
+    logger.info("🚀 Starting PromoCanvas Bot...")
+    
     # Create application
     application = Application.builder().token(BOT_TOKEN).build()
     
@@ -436,7 +443,7 @@ def main():
     application.add_error_handler(error_handler)
     
     # Start the bot
-    logger.info("🚀 Bot is starting...")
+    logger.info("✅ Bot is running! Waiting for messages...")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':

@@ -1,23 +1,47 @@
 import os
+import sys
 import logging
-import asyncio
-from dotenv import load_dotenv
 
-# Load environment variables FIRST
+# Try to import dotenv, install if missing
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    print("📦 python-dotenv not found, installing...")
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "python-dotenv"])
+    from dotenv import load_dotenv
+
+# Load environment variables
 load_dotenv()
 
 # Now import telegram
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,
-    MessageHandler,
-    filters,
-    ConversationHandler,
-    ContextTypes
-)
-from telegram.constants import ParseMode
+try:
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+    from telegram.ext import (
+        Application,
+        CommandHandler,
+        CallbackQueryHandler,
+        MessageHandler,
+        filters,
+        ConversationHandler,
+        ContextTypes
+    )
+    from telegram.constants import ParseMode
+except ImportError:
+    print("📦 python-telegram-bot not found, installing...")
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "python-telegram-bot==20.7"])
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+    from telegram.ext import (
+        Application,
+        CommandHandler,
+        CallbackQueryHandler,
+        MessageHandler,
+        filters,
+        ConversationHandler,
+        ContextTypes
+    )
+    from telegram.constants import ParseMode
 
 # Configure logging
 logging.basicConfig(
@@ -32,13 +56,15 @@ NAME, DETAILS, AUDIENCE, STYLE, COLOR, IMAGE, DIMENSIONS, CONFIRM = range(8)
 # Get bot token
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 if not BOT_TOKEN:
-    logger.error("BOT_TOKEN not found in environment variables!")
+    logger.error("❌ BOT_TOKEN not found in environment variables!")
     raise ValueError("BOT_TOKEN environment variable is required!")
 
-logger.info(f"Bot token loaded: {BOT_TOKEN[:10]}...")
+logger.info(f"✅ Bot token loaded successfully")
 
 # Store user data
 user_data = {}
+
+# ============= COMMAND HANDLERS =============
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command"""
@@ -47,7 +73,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = f"""
 🎨 *Welcome to PromoCanvas Bot, {user.first_name}!*
 
-I'm your AI-powered campaign design assistant.
+I'm your AI-powered campaign design assistant that helps create professional promotional visuals.
 
 ✨ *What I can do:*
 • Generate professional ad creatives
@@ -55,7 +81,7 @@ I'm your AI-powered campaign design assistant.
 • Apply your brand colors and style
 • Create visuals in various dimensions
 
-🚀 *Get started with /create*
+🚀 *Ready to create something amazing?*
 
 📌 *Commands:*
 /create - Start a new campaign
@@ -88,7 +114,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 *Campaign Creation Process:*
 1️⃣ Enter campaign name
-2️⃣ Describe your campaign
+2️⃣ Describe your campaign details
 3️⃣ Define target audience
 4️⃣ Choose design style
 5️⃣ Select color scheme
@@ -96,13 +122,24 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 7️⃣ Choose dimensions
 8️⃣ Review and confirm
 
-*Need Help?*
+*Design Styles Available:*
+🎯 Modern Minimalist - Clean and elegant
+🎨 Creative Artistic - Bold and unique
+💼 Professional Corporate - Formal and business
+🌟 Bold & Vibrant - Eye-catching
+
+*Tips for Best Results:*
+• Be detailed in your campaign description
+• Upload high-quality images
+• Choose appropriate dimensions for your platform
+
+*Need More Help?*
 Contact: support@promocanvas.com
 """
     await update.message.reply_text(help_text, parse_mode=ParseMode.MARKDOWN)
 
 async def create_campaign(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Start campaign creation"""
+    """Start campaign creation process"""
     query = update.callback_query if update.callback_query else None
     
     if query:
@@ -116,46 +153,80 @@ async def create_campaign(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await message.reply_text(
         "📝 *Create Your Campaign*\n\n"
-        "Please enter a *name* for your campaign:\n"
-        "Example: 'Summer Sale 2026'",
+        "First, give your campaign a *name*.\n"
+        "Example: 'Summer Sale 2026' or 'Product Launch'\n\n"
+        "Please enter the campaign name:",
         parse_mode=ParseMode.MARKDOWN
     )
     return NAME
 
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Get campaign name"""
+    """Handle campaign name input"""
     user_id = update.effective_user.id
-    user_data[user_id]['name'] = update.message.text.strip()
+    name = update.message.text.strip()
+    
+    if len(name) < 3:
+        await update.message.reply_text(
+            "❌ Campaign name must be at least 3 characters.\n"
+            "Please enter a valid name:"
+        )
+        return NAME
+    
+    user_data[user_id]['name'] = name
     
     await update.message.reply_text(
         "📋 *Campaign Details*\n\n"
-        "Please describe your campaign in detail:\n"
+        "Please describe your campaign in detail:\n\n"
         "• What's the main message?\n"
         "• What are you promoting?\n"
-        "• Any specific offers?\n\n"
-        "Be as detailed as possible:",
+        "• Any specific offers or calls to action?\n"
+        "• What makes it unique?\n\n"
+        "Be as detailed as possible for better results:",
         parse_mode=ParseMode.MARKDOWN
     )
     return DETAILS
 
 async def get_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Get campaign details"""
+    """Handle campaign details input"""
     user_id = update.effective_user.id
-    user_data[user_id]['details'] = update.message.text.strip()
+    details = update.message.text.strip()
+    
+    if len(details) < 20:
+        await update.message.reply_text(
+            "❌ Please provide more details (at least 20 characters).\n"
+            "Describe your campaign in more detail:"
+        )
+        return DETAILS
+    
+    user_data[user_id]['details'] = details
     
     await update.message.reply_text(
         "👥 *Target Audience*\n\n"
-        "Who is your target audience?\n"
-        "Example: 'Young professionals aged 25-35'",
+        "Who is your target audience?\n\n"
+        "Examples:\n"
+        "• Young professionals aged 25-35\n"
+        "• Tech-savvy entrepreneurs\n"
+        "• Fitness enthusiasts\n"
+        "• Parents with young children\n\n"
+        "Please describe your target audience:",
         parse_mode=ParseMode.MARKDOWN
     )
     return AUDIENCE
 
 async def get_audience(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Get target audience"""
+    """Handle target audience input"""
     user_id = update.effective_user.id
-    user_data[user_id]['audience'] = update.message.text.strip()
+    audience = update.message.text.strip()
     
+    if len(audience) < 3:
+        await update.message.reply_text(
+            "❌ Please provide a valid audience description (at least 3 characters)."
+        )
+        return AUDIENCE
+    
+    user_data[user_id]['audience'] = audience
+    
+    # Show style selection
     keyboard = [
         [InlineKeyboardButton("🎯 Modern Minimalist", callback_data="style_modern")],
         [InlineKeyboardButton("🎨 Creative Artistic", callback_data="style_artistic")],
@@ -165,14 +236,15 @@ async def get_audience(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(
-        "🎨 *Select Design Style*",
+        "🎨 *Select Design Style*\n\n"
+        "Choose a design style that best fits your campaign:",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=reply_markup
     )
     return STYLE
 
 async def get_style(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Get design style"""
+    """Handle design style selection"""
     query = update.callback_query
     await query.answer()
     
@@ -180,6 +252,14 @@ async def get_style(update: Update, context: ContextTypes.DEFAULT_TYPE):
     style = query.data.replace('style_', '')
     user_data[user_id]['style'] = style
     
+    style_names = {
+        'modern': 'Modern Minimalist',
+        'artistic': 'Creative Artistic',
+        'corporate': 'Professional Corporate',
+        'vibrant': 'Bold & Vibrant'
+    }
+    
+    # Color scheme selection
     keyboard = [
         [InlineKeyboardButton("🔵 Classic Blue", callback_data="color_blue")],
         [InlineKeyboardButton("🔴 Passion Red", callback_data="color_red")],
@@ -189,15 +269,16 @@ async def get_style(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await query.message.edit_text(
-        f"✅ Style: *{style.title()}*\n\n"
-        "🎨 *Choose Color Scheme*",
+        f"✅ Style selected: *{style_names.get(style, style)}*\n\n"
+        "🎨 *Choose a Color Scheme*\n\n"
+        "Select the color palette for your campaign:",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=reply_markup
     )
     return COLOR
 
 async def get_color(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Get color scheme"""
+    """Handle color scheme selection"""
     query = update.callback_query
     await query.answer()
     
@@ -205,10 +286,20 @@ async def get_color(update: Update, context: ContextTypes.DEFAULT_TYPE):
     color = query.data.replace('color_', '')
     user_data[user_id]['color'] = color
     
+    color_names = {
+        'blue': 'Classic Blue',
+        'red': 'Passion Red',
+        'green': 'Fresh Green',
+        'dark': 'Dark Night'
+    }
+    
     await query.message.edit_text(
-        f"✅ Color: *{color.title()}*\n\n"
-        "🖼️ *Upload Logo/Image*\n"
-        "Send an image or type /skip",
+        f"✅ Color scheme selected: *{color_names.get(color, color)}*\n\n"
+        "🖼️ *Upload Your Logo or Image*\n\n"
+        "Upload your logo or brand image to include in the design.\n"
+        "Supported formats: JPG, PNG, GIF, WebP\n"
+        "Max size: 20MB\n\n"
+        "Type /skip to continue without an image:",
         parse_mode=ParseMode.MARKDOWN
     )
     return IMAGE
@@ -220,14 +311,17 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.photo:
         photo = update.message.photo[-1]
         user_data[user_id]['image'] = photo.file_id
-        await update.message.reply_text("✅ Image uploaded!")
+        await update.message.reply_text("✅ Image uploaded successfully!")
     elif update.message.document:
-        doc = update.message.document
-        if doc.mime_type and doc.mime_type.startswith('image/'):
-            user_data[user_id]['image'] = doc.file_id
-            await update.message.reply_text("✅ Image uploaded!")
+        document = update.message.document
+        if document.mime_type and document.mime_type.startswith('image/'):
+            if document.file_size > 20 * 1024 * 1024:
+                await update.message.reply_text("❌ Image is too large (max 20MB)")
+                return IMAGE
+            user_data[user_id]['image'] = document.file_id
+            await update.message.reply_text("✅ Image uploaded successfully!")
         else:
-            await update.message.reply_text("❌ Please upload an image file")
+            await update.message.reply_text("❌ Please upload an image file (JPG, PNG, GIF, WebP)")
             return IMAGE
     else:
         await update.message.reply_text("❌ Please upload an image or type /skip")
@@ -239,7 +333,7 @@ async def skip_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Skip image upload"""
     user_id = update.effective_user.id
     user_data[user_id]['image'] = None
-    await update.message.reply_text("⏭️ Skipped image")
+    await update.message.reply_text("⏭️ Skipped image upload")
     return await show_dimensions(update, context)
 
 async def show_dimensions(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -258,20 +352,29 @@ async def show_dimensions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await message.reply_text(
-        "📐 *Select Dimensions*",
+        "📐 *Select Dimensions*\n\n"
+        "Choose the dimensions for your creative:",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=reply_markup
     )
     return DIMENSIONS
 
 async def get_dimensions(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Get dimensions"""
+    """Handle dimension selection"""
     query = update.callback_query
     await query.answer()
     
     user_id = query.from_user.id
     dimension = query.data.replace('dim_', '')
     user_data[user_id]['dimension'] = dimension
+    
+    # Dimension display names
+    dim_names = {
+        'instagram': 'Instagram (1080x1080)',
+        'facebook': 'Facebook (1200x630)',
+        'twitter': 'Twitter (1200x675)',
+        'youtube': 'YouTube (1280x720)'
+    }
     
     # Show confirmation
     data = user_data[user_id]
@@ -284,7 +387,7 @@ async def get_dimensions(update: Update, context: ContextTypes.DEFAULT_TYPE):
 👥 *Audience:* {data.get('audience', 'Not set')}
 🎨 *Style:* {data.get('style', 'Not set').title()}
 🎨 *Color:* {data.get('color', 'Not set').title()}
-📐 *Dimension:* {dimension.title()}
+📐 *Dimension:* {dim_names.get(dimension, dimension)}
 🖼️ *Image:* {'✅ Uploaded' if data.get('image') else '❌ Skipped'}
     """
     
@@ -296,7 +399,7 @@ async def get_dimensions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await query.message.edit_text(
         f"{summary}\n\n"
-        "Review and click 'Generate Design':",
+        "Review your campaign details and click 'Generate Design' when ready:",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=reply_markup
     )
@@ -312,15 +415,26 @@ async def generate_design(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Show processing
     await query.message.edit_text(
-        "🎨 *Generating your design...*\n\n"
-        "⏳ Please wait...",
+        "🎨 *Generating Your Campaign Design...*\n\n"
+        "Please wait while I create your professional visuals...\n"
+        "⏳ This may take a few moments.",
         parse_mode=ParseMode.MARKDOWN
     )
     
-    # Simulate processing
+    # Simulate processing time
+    import asyncio
     await asyncio.sleep(2)
     
     # Generate campaign copy
+    style_descriptions = {
+        'modern': 'clean and minimalist',
+        'artistic': 'creative and artistic',
+        'corporate': 'professional and business-focused',
+        'vibrant': 'bold and energetic'
+    }
+    
+    style_desc = style_descriptions.get(data.get('style', 'modern'), 'professional')
+    
     campaign_copy = f"""
 🎯 *Campaign: {data.get('name', 'Campaign')}*
 
@@ -336,7 +450,7 @@ async def generate_design(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📐 *Dimensions:* {data.get('dimension', 'instagram').title()}
 
 💡 *Next Steps:*
-1. Review the design
+1. Review the design above
 2. Make adjustments if needed
 3. Share your campaign!
 
@@ -357,14 +471,15 @@ async def generate_design(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Cancel operation"""
+    """Cancel current operation"""
     user_id = update.effective_user.id
     if user_id in user_data:
         del user_data[user_id]
     
     await update.message.reply_text(
-        "🔄 *Cancelled*\n\n"
-        "Use /create to start a new campaign.",
+        "🔄 *Operation Cancelled*\n\n"
+        "You can start a new campaign with /create anytime!\n"
+        "Need help? Use /help",
         parse_mode=ParseMode.MARKDOWN
     )
     return ConversationHandler.END
@@ -395,12 +510,15 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if update and update.effective_message:
             await update.effective_message.reply_text(
-                "⚠️ *Something went wrong*\n\n"
-                "Please try again or use /help for assistance.",
+                "⚠️ *Oops! Something went wrong.*\n\n"
+                "Please try again later or use /help for assistance.\n"
+                "If the problem persists, contact support.",
                 parse_mode=ParseMode.MARKDOWN
             )
     except:
         pass
+
+# ============= MAIN FUNCTION =============
 
 def main():
     """Main function to run the bot"""
@@ -409,7 +527,7 @@ def main():
     # Create application
     application = Application.builder().token(BOT_TOKEN).build()
     
-    # Conversation handler
+    # Conversation handler for campaign creation
     conv_handler = ConversationHandler(
         entry_points=[
             CommandHandler('create', create_campaign),
